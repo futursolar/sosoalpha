@@ -122,6 +122,136 @@ Akindo平台所推崇的WaveHacks机制，是对传统黑客松模式的一次�
 * **早期原型部署**：在本阶段，无需强求系统能够实现全自动的主网链上资金操作。 团队将集中精力开发一个前端可视化仪表盘（例如基于Python的Streamlit或React框架构建）。 该仪表盘将演示如何通过后端实时拉取SoSoValue的ETF流动数据大屏与Crypto AI Feeds，在本地终端打印出AI模型输出的“溢价率计算结果”与“多空方向交易提示信号”。
 * **API规划提交**：展示系统对SoSoValue生态资源的依赖，并正式提交API限额提升的特殊申请。
 
+```mermaid
+flowchart TB
+
+%% =====================
+%% Data Sources Layer
+%% =====================
+subgraph L1[数据源层 Data Sources]
+    SSV[SoSoValue API]
+    ETF[ETF 资金流数据]
+    OI[妖币 OI / 持仓数据]
+    SSI[SSI 协议收益与状态数据]
+    ONCHAIN[ValueChain 链上数据<br/>可选补充]
+end
+
+SSV --> ETF
+SSV --> OI
+SSV --> SSI
+ONCHAIN --> DATAHUB
+
+%% =====================
+%% Data Processing Layer
+%% =====================
+subgraph L2[数据处理与特征工程层 Data Processing]
+    DATAHUB[数据接入与标准化模块]
+    CLEAN[数据清洗 / 去噪 / 对齐]
+    FEATURE[特征工程<br/>资金流特征 / OI 异常特征 / SSI 收益特征]
+    STORE[(时序数据库 / 策略特征库)]
+end
+
+ETF --> DATAHUB
+OI --> DATAHUB
+SSI --> DATAHUB
+DATAHUB --> CLEAN --> FEATURE --> STORE
+
+%% =====================
+%% AI Strategy Layer
+%% =====================
+subgraph L3[AI 策略引擎层 AI Strategy Engine]
+    LG[LangGraph 多智能体编排框架]
+
+    ANALYST[AI 数据分析师 Agent]
+    PM[AI 投资组合经理 Agent]
+    RISKAGENT[AI 风险评估 Agent]
+
+    LLM[DeepSeek-V4 / LLM 推理引擎]
+
+    M1[ETF 资金预测模型<br/>Macro Alpha]
+    M2[妖币 OI 异常监测模型<br/>Micro Alpha]
+    M3[SSI 避险 / 生息调度模型]
+    SIGNAL[策略信号融合模块]
+end
+
+STORE --> ANALYST
+LG --> ANALYST
+LG --> PM
+LG --> RISKAGENT
+
+ANALYST --> M1
+ANALYST --> M2
+ANALYST --> M3
+
+M1 --> SIGNAL
+M2 --> SIGNAL
+M3 --> SIGNAL
+
+SIGNAL --> PM
+LLM <--> ANALYST
+LLM <--> PM
+LLM <--> RISKAGENT
+
+%% =====================
+%% Risk & Execution Layer
+%% =====================
+subgraph L4[风控与执行层 Risk & Execution]
+    RISK[风控系统<br/>Pre-trade / Post-trade Checks]
+    ORDER[订单生成模块]
+    EXEC[执行接口 Execution Interface]
+    SODEX[SoDEX]
+    VALUE[ValueChain L1]
+end
+
+PM --> RISKAGENT
+RISKAGENT --> RISK
+PM --> RISK
+RISK --> ORDER --> EXEC
+EXEC --> SODEX
+EXEC --> VALUE
+
+SODEX --> FEEDBACK[成交 / 滑点 / Gas / 状态反馈]
+VALUE --> FEEDBACK
+FEEDBACK --> STORE
+FEEDBACK --> RISK
+
+%% =====================
+%% UI Layer
+%% =====================
+subgraph L5[用户界面与监控层 UI & Monitoring]
+    DASH[实时监控仪表盘]
+    USER[用户 / 评委 / 操作员]
+    ALERT[告警系统<br/>异常行情 / 风险超限 / 执行失败]
+end
+
+STORE --> DASH
+SIGNAL --> DASH
+PM --> DASH
+RISK --> DASH
+EXEC --> DASH
+FEEDBACK --> DASH
+
+RISK --> ALERT
+EXEC --> ALERT
+ALERT --> USER
+USER --> DASH
+USER --> PM
+
+%% =====================
+%% Styling
+%% =====================
+classDef data fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
+classDef ai fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C;
+classDef risk fill:#FFF3E0,stroke:#EF6C00,color:#E65100;
+classDef ui fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+classDef chain fill:#FCE4EC,stroke:#AD1457,color:#880E4F;
+
+class SSV,ETF,OI,SSI,ONCHAIN,DATAHUB,CLEAN,FEATURE,STORE data;
+class LG,ANALYST,PM,RISKAGENT,LLM,M1,M2,M3,SIGNAL ai;
+class RISK,ORDER,EXEC,FEEDBACK risk;
+class DASH,USER,ALERT ui;
+class SODEX,VALUE chain;
+```
 ### Wave 2：核心功能开发与深度集成阶段（2026年5月18日 – 6月3日）
 
 本阶段是整个技术攻坚的核心期。 目标是实现交易链路的完全闭环，并在公开测试网跑通，以赢取本阶段的 3,000 USDC 资助 2。
